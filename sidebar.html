@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  </head>
+  <body>
+    <div class="mt-4 mr-5 ml-2">
+      <form id="userInputForm" onsubmit="handlerFormSubmit()">
+        <div class="control has-icons-left mb-2">
+          <input class="input" id="userInput" name="folderId" type="text" placeholder="Folder link or ID" required>
+          <span class="icon is-small is-left">
+            <i class="bi bi-link"></i>
+          </span>
+        </div>
+        <div class="d-flex mb-2">
+          <input class="mx-2" id="toggle" type="checkbox">
+          <label class="has-text-grey-dark is-size-7" for="toggle">
+            List files inside folders</label>
+        </div>
+        <button class="button is-success is-fullwidth my-4" id="generateBtn">
+          <span class="icon">
+            <i class="bi bi-download"></i>
+          </span>
+          <span>Generate</span>
+        </button>        
+      </form>
+      <div id="notificationContainer" class="mt-5"></div>
+    </div>
+  </body>
+
+  <style>
+    .d-flex{
+      display: flex;
+      align-items: center;
+    }
+
+    label,
+    #toggle {
+      cursor: pointer;
+    }
+  </style>
+
+  <script>
+    function displayNotification(className, message) {
+      const notification = document.createElement("div");
+      notification.classList.add("notification", className, "is-light");
+      
+      const closeButton = document.createElement("button");
+      closeButton.onclick = function() {
+          notification.remove();
+      };
+      closeButton.classList.add("delete");
+      notification.appendChild(closeButton);
+
+      const textNode = document.createTextNode(message);
+      notification.appendChild(textNode);
+
+      document.querySelector('#notificationContainer').appendChild(notification);
+    }
+
+    function setLoadingState(loading) {
+      const generateBtn = document.querySelector("#generateBtn");
+      const userInput = document.querySelector('#userInput');
+
+      if (loading) {
+        generateBtn.classList.add('is-loading');
+        userInput.disabled = true;
+      } else {
+        generateBtn.classList.remove('is-loading');
+        userInput.disabled = false;
+      }
+    }
+
+    function handlerFormSubmit() {
+      const userInput = document.querySelector('#userInput');
+      const toggle = document.querySelector('#toggle');
+      var inputValue= userInput.value;
+      var toggleValue = toggle.checked;
+
+      // Check if the inputValue is a full link
+      const folderLinkPattern = /^https:\/\/drive\.google\.com\/drive\/folders\/([a-zA-Z0-9_-]+)$/;
+
+      if (folderLinkPattern.test(inputValue)) {
+        // Extract the folder ID from the link
+        inputValue = inputValue.match(folderLinkPattern)[1];
+      }
+      setLoadingState(true); // Set loading state
+
+      // Check folder existence
+      google.script.run.withSuccessHandler(function (result) {
+        setLoadingState(false) // Clear loading state
+        if (result.success) {
+          // If the folder exists, retrieve folder tree data
+          setLoadingState(true); // Set loading state
+
+          google.script.run.withSuccessHandler(function() {
+            setLoadingState(false); // Clear loading state
+            displayNotification('is-success', 'Generation complete');
+          }).getFolderTree(inputValue, toggleValue);
+        } else {
+          // If the folder doesn't exist, display an error message
+          displayNotification('is-danger', result.message);
+        }
+      }).checkFolderExists(inputValue);
+    }
+  </script>
+
+</html>
